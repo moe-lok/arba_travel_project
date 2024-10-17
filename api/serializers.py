@@ -20,16 +20,22 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class CommentSerializer(serializers.ModelSerializer):
-    user = serializers.ReadOnlyField(source='user.username')
-
+    user = UserSerializer(read_only=True)
+    
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'text', 'created_at']
+        fields = ['id', 'user', 'post', 'text', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'post', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        post = self.context['post']
+        return Comment.objects.create(user=user, post=post, **validated_data)
 
 class PostSerializer(serializers.ModelSerializer):
-    user = serializers.ReadOnlyField(source='user.username')
+    user = UserSerializer(read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Post
-        fields = ['id', 'user', 'image', 'caption', 'created_at', 'comments']
+        fields = ['id', 'user', 'image', 'caption', 'created_at', 'updated_at', 'comments']

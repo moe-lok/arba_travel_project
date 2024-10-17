@@ -14,8 +14,8 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.core.mail import send_mail
 from django.conf import settings
 import logging
-from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate
+from rest_framework.exceptions import PermissionDenied
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -73,10 +73,24 @@ class PostList(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+class IsOwnerOrReadOnly(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return obj.user == request.user
+
 class PostDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can't delete this post.")
+        instance.delete()
 
 class CommentList(generics.ListCreateAPIView):
     serializer_class = CommentSerializer
@@ -85,13 +99,26 @@ class CommentList(generics.ListCreateAPIView):
     def get_queryset(self):
         return Comment.objects.filter(post_id=self.kwargs['post_id'])
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user, post_id=self.kwargs['post_id'])
+    def create(self, request, *args, **kwargs):
+        post = Post.objects.get(pk=self.kwargs['post_id'])
+        serializer = self.get_serializer(data=request.data, context={'request': request, 'post': post})
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 class CommentDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
+
+    def perform_update(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def perform_destroy(self, instance):
+        if instance.user != self.request.user:
+            raise PermissionDenied("You can't delete this comment.")
+        instance.delete()
 
 class PasswordResetView(APIView):
     permission_classes = ()
