@@ -21,17 +21,17 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class CreateUserView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = ()
 
     def post(self, request):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
+            token, created = Token.objects.get_or_create(user=user)
             return Response({
                 'user': UserSerializer(user).data,
-                'message': 'User created successfully',
+                'token': token.key
             }, status=status.HTTP_201_CREATED)
-        logger.error(f"User registration failed. Errors: {serializer.errors}")
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CustomObtainAuthToken(ObtainAuthToken):

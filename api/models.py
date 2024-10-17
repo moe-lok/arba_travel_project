@@ -1,7 +1,6 @@
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from rest_framework.authtoken.models import Token
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, name, password=None, **extra_fields):
@@ -11,7 +10,6 @@ class CustomUserManager(BaseUserManager):
         user = self.model(email=email, name=name, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
-        Token.objects.create(user=user)  # Create token for new user
         return user
 
     def create_superuser(self, email, name, password=None, **extra_fields):
@@ -19,20 +17,17 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_superuser', True)
 
         if extra_fields.get('is_staff') is not True:
-
             raise ValueError('Superuser must have is_staff=True.')
-
         if extra_fields.get('is_superuser') is not True:
-
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self.create_user(email, name, password, **extra_fields)
-    
+
 class User(AbstractUser):
-    username = None  # Remove username field
+    username = None
     email = models.EmailField(_('email address'), unique=True)
     name = models.CharField(max_length=255)
-    
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['name']
 

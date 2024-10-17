@@ -6,12 +6,10 @@ from rest_framework.authtoken.models import Token
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
-    token = serializers.SerializerMethodField()
-    password = serializers.CharField(write_only=True)
-
     class Meta:
         model = User
-        fields = ('id', 'email', 'name', 'password', 'token')
+        fields = ('id', 'email', 'name', 'password')
+        extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -19,12 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
             name=validated_data['name'],
             password=validated_data['password']
         )
-        Token.objects.create(user=user)
         return user
-
-    def get_token(self, obj):
-        token, created = Token.objects.get_or_create(user=obj)
-        return token.key
 
 class CommentSerializer(serializers.ModelSerializer):
     user = serializers.ReadOnlyField(source='user.username')
