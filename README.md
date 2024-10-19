@@ -20,7 +20,7 @@ This is the backend for the ARBA Travel application, a social media-like platfor
 1. Clone the repository:
    ```
    git clone https://github.com/moe-lok/arba_travel_project.git
-   cd arba-travel-backend
+   cd arba_travel_project
    ```
 
 2. Create a virtual environment and activate it:
